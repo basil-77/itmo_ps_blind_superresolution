@@ -129,7 +129,7 @@ class torch_trainer():
                     value = log[item]
             log_str = log_str + ' ' + item + ': ' + str(value)
         dt = int(time.time() - self.start_time)
-        log_str_time = f'; time:{dt//3600:03d}:{(dt//60)%60:02d}:{dt%60:02d}'
+        log_str_time = f'; time: {dt//3600:03d}:{(dt//60)%60:02d}:{dt%60:02d}'
         log_str = log_str + log_str_time
 
         if epoch_log:
