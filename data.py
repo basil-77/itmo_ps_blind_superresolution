@@ -253,7 +253,7 @@ class data_patches_div2k_unknown_x4_train(image_dataset_patches_from_file):
                  source_path = './data/div2k/DIV2K_train_LR_unknown/X4',
                  target_path = './data/div2k/DIV2K_train_LR_unknown/X4',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, lmit=None):
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
         super(data_patches_div2k_unknown_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)        
 
 class data_patches_div2k_bicubic_x2_train(image_dataset_patches_from_file):
@@ -261,7 +261,7 @@ class data_patches_div2k_bicubic_x2_train(image_dataset_patches_from_file):
                  source_path = './data/div2k/DIV2K_train_LR_bicubic/X2',
                  target_path = './data/div2k/DIV2K_train_LR_bicubic/X2',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, lmit=None):
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
         super(data_patches_div2k_bicubic_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
         
 class data_patches_div2k_bicubic_x3_train(image_dataset_patches_from_file):
@@ -269,7 +269,7 @@ class data_patches_div2k_bicubic_x3_train(image_dataset_patches_from_file):
                  source_path = './data/div2k/DIV2K_train_LR_bicubic/X3',
                  target_path = './data/div2k/DIV2K_train_LR_bicubic/X3',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, lmit=None):
+                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
         super(data_patches_div2k_bicubic_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
         
 class data_patches_div2k_bicubic_x4_train(image_dataset_patches_from_file):
@@ -277,7 +277,7 @@ class data_patches_div2k_bicubic_x4_train(image_dataset_patches_from_file):
                  source_path = './data/div2k/DIV2K_train_LR_bicubic/X4',
                  target_path = './data/div2k/DIV2K_train_LR_bicubic/X4',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, lmit=None):
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
         super(data_patches_div2k_bicubic_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
 
 
