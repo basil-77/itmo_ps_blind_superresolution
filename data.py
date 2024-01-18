@@ -86,7 +86,7 @@ class image_dataset_from_file(Dataset):
         
 
 class image_dataset_patches_from_file(Dataset):
-    def __init__(self, source_path, target_path, ref_path, patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+    def __init__(self, source_path, target_path, ref_path, patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
         self.source_path = source_path if type(source_path)==list else [source_path]*1
         self.target_path = target_path if type(target_path)==list else [target_path]*1
         self.ref_path = ref_path if type(ref_path)==list else [ref_path]*1
@@ -96,6 +96,7 @@ class image_dataset_patches_from_file(Dataset):
         self.source_mask = source_mask
         self.target_mask = target_mask
         self.ref_mask = ref_mask
+        self.refastarget = refastarget
         self.images_source = []
         self.images_target = []
         self.images_ref = []
@@ -123,7 +124,7 @@ class image_dataset_patches_from_file(Dataset):
                 else:
                     self.images_target.append(os.path.join(path, filename))
 
-        for path in self.source_path:
+        for path in self.ref_path:
             for filename in os.listdir(path):
                 if self.ref_mask:
                     if filename.find(self.ref_mask)>0:
@@ -136,13 +137,15 @@ class image_dataset_patches_from_file(Dataset):
             self.images_target = self.images_target[:limit]
             self.images_ref = self.images_ref[:limit]
             
+            
+            
         image_transforms = []
         image_transforms.append(torchvision.transforms.v2.ToImage())
         image_transforms.append(torchvision.transforms.v2.ToDtype(torch.float32, scale=True))
         self.transform = torchvision.transforms.Compose(image_transforms)
         
         for image in tqdm(self.images_source):
-            img = read_image(image)
+            img = read_image(image)[:3]
             if img.shape[0]!= 3:
                 img = img.expand(3,-1,-1)
             if (img.shape[1]>=patch_size[0] and img.shape[2]>=patch_size[1]):
@@ -156,23 +159,9 @@ class image_dataset_patches_from_file(Dataset):
             else:
                 self.images_source.remove(image)
                 
-        for image in tqdm(self.images_target):
-            img = read_image(image)
-            if img.shape[0]!= 3:
-                img = img.expand(3,-1,-1)
-            if (img.shape[1]>=patch_size[0] and img.shape[2]>=patch_size[1]):
-                img_tr = self.transform(img)
-                self.images_target_img.append(img_tr)
-                patches = img_tr.data.unfold(0, 3, 3).unfold(1, patch_size[0], patch_size[1]).unfold(2, patch_size[0], patch_size[1])
-                size = patches[0].shape
-                for i in range(size[0]):
-                    for j in range(size[1]):
-                        self.images_target_patches.append(patches[0][i][j])
-            else:
-                self.images_target.remove(image)
-                
+                        
         for image in tqdm(self.images_ref):
-            img = read_image(image)
+            img = read_image(image)[:3]
             if img.shape[0]!= 3:
                 img = img.expand(3,-1,-1)
             if (img.shape[1]>=patch_size[0]*self.ref_scale and img.shape[2]>=patch_size[1]*self.ref_scale):    
@@ -190,46 +179,78 @@ class image_dataset_patches_from_file(Dataset):
             else:
                 self.images_ref.remove(image)
 
+        if self.refastarget:
+            self.target_path = self.ref_path
+            self.target_mask = self.ref_mask
+            self.images_target = self.images_ref
+            self.images_target_img = self.images_ref_img
+            self.images_target_patches = self.images_ref_patches
+        else:
+            for image in tqdm(self.images_target):
+                img = read_image(image)[:3]
+                if img.shape[0]!= 3:
+                    img = img.expand(3,-1,-1)
+                if (img.shape[1]>=patch_size[0] and img.shape[2]>=patch_size[1]):
+                    img_tr = self.transform(img)
+                    self.images_target_img.append(img_tr)
+                    patches = img_tr.data.unfold(0, 3, 3).unfold(1, patch_size[0], patch_size[1]).unfold(2, patch_size[0], patch_size[1])
+                    size = patches[0].shape
+                    for i in range(size[0]):
+                        for j in range(size[1]):
+                            self.images_target_patches.append(patches[0][i][j])
+                else:
+                    self.images_target.remove(image)
+                  
+
                 
     def __len__(self):
-        return len(self.images_source)
+        return len(self.images_source_patches)
     
     def __getitem__(self, index):
         data_source = self.images_source_patches[index]
         data_target = self.images_target_patches[index]
         return data_source, data_target
 
+class data_patches_custom_canoneosr_x2_train(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/canoneosr/lr_x2',
+                 target_path = './data/canoneosr/lr_x2',
+                 ref_path = './data/canoneosr/hr',
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=None, target_mask=None, ref_mask=None, limit=None, refastarget=False):
+        super(data_patches_custom_canoneosr_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
+
+
 class data_patches_realsr_x2_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = ['./data/RealSR(V3)/canon/train/2', './data/RealSR(V3)/Nikon/train/2'],
                  target_path = ['./data/RealSR(V3)/canon/train/2', './data/RealSR(V3)/Nikon/train/2'],
                  ref_path = ['./data/RealSR(V3)/canon/train/2', './data/RealSR(V3)/Nikon/train/2'],
-                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None):
-        super(data_patches_realsr_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None, refastarget=False):
+        super(data_patches_realsr_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, normalize=normalize, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
 
 class data_patches_realsr_x3_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = ['./data/RealSR(V3)/canon/train/3', './data/RealSR(V3)/Nikon/train/3'],
                  target_path = ['./data/RealSR(V3)/canon/train/3', './data/RealSR(V3)/Nikon/train/3'],
                  ref_path = ['./data/RealSR(V3)/canon/train/3', './data/RealSR(V3)/Nikon/train/3'],
-                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None):
-        super(data_patches_realsr_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None, refastarget=False):
+        super(data_patches_realsr_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
 
 class data_patches_realsr_x4_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = ['./data/RealSR(V3)/canon/train/4', './data/RealSR(V3)/Nikon/train/4'],
                  target_path = ['./data/RealSR(V3)/canon/train/4', './data/RealSR(V3)/Nikon/train/4'],
                  ref_path = ['./data/RealSR(V3)/canon/train/4', './data/RealSR(V3)/Nikon/train/4'],
-                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None):
-        super(data_patches_realsr_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)        
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None, refastarget=False):
+        super(data_patches_realsr_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)        
 
 class data_patches_imagenet(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/imagenet/train',
                  target_path = './data/imagenet/train',
                  ref_path = './data/imagenet/train',
-                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_imagenet, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_imagenet, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
 
 
 class data_patches_div2k_unknown_x2_train(image_dataset_patches_from_file):
@@ -237,48 +258,48 @@ class data_patches_div2k_unknown_x2_train(image_dataset_patches_from_file):
                  source_path = './data/div2k/DIV2K_train_LR_unknown/X2',
                  target_path = './data/div2k/DIV2K_train_LR_unknown/X2',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_div2k_unknown_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, lmit=limit)
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_div2k_unknown_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, lmit=limit, refastarget=refastarget)
         
 class data_patches_div2k_unknown_x3_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/div2k/DIV2K_train_LR_unknown/X3',
                  target_path = './data/div2k/DIV2K_train_LR_unknown/X3',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_div2k_unknown_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_div2k_unknown_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
         
 class data_patches_div2k_unknown_x4_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/div2k/DIV2K_train_LR_unknown/X4',
                  target_path = './data/div2k/DIV2K_train_LR_unknown/X4',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_div2k_unknown_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)        
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_div2k_unknown_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)        
 
 class data_patches_div2k_bicubic_x2_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/div2k/DIV2K_train_LR_bicubic/X2',
                  target_path = './data/div2k/DIV2K_train_LR_bicubic/X2',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_div2k_bicubic_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_div2k_bicubic_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
         
 class data_patches_div2k_bicubic_x3_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/div2k/DIV2K_train_LR_bicubic/X3',
                  target_path = './data/div2k/DIV2K_train_LR_bicubic/X3',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_div2k_bicubic_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_div2k_bicubic_x3_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
         
 class data_patches_div2k_bicubic_x4_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/div2k/DIV2K_train_LR_bicubic/X4',
                  target_path = './data/div2k/DIV2K_train_LR_bicubic/X4',
                  ref_path = './data/div2k/DIV2K_train_HR',
-                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
-        super(data_patches_div2k_bicubic_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None, refastarget=False):
+        super(data_patches_div2k_bicubic_x4_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
 
 
 
@@ -390,4 +411,53 @@ class data_urban100_x4(image_dataset_from_file):
                  ref_path = './data/benchmark/Urban100/HR',
                  ref_scale=4, normalize=False, source_mask=False, ref_mask=False):
         super(data_urban100_x4, self).__init__(source_path, ref_path, ref_scale=ref_scale, source_mask=source_mask, ref_mask=ref_mask)        
+
+
+# div2k valid
+class data_patches_div2k_unknown_x2_valid(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/div2k/DIV2K_valid_LR_unknown/X2',
+                 target_path = './data/div2k/DIV2K_valid_LR_unknown/X2',
+                 ref_path = './data/div2k/DIV2K_valid_HR',
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+        super(data_patches_div2k_unknown_x2_valid, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, lmit=limit)
         
+class data_patches_div2k_unknown_x3_valid(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/div2k/DIV2K_valid_LR_unknown/X3',
+                 target_path = './data/div2k/DIV2K_valid_LR_unknown/X3',
+                 ref_path = './data/div2k/DIV2K_valid_HR',
+                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+        super(data_patches_div2k_unknown_x3_valid, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+        
+class data_patches_div2k_unknown_x4_valid(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/div2k/DIV2K_valid_LR_unknown/X4',
+                 target_path = './data/div2k/DIV2K_valid_LR_unknown/X4',
+                 ref_path = './data/div2k/DIV2K_valid_HR',
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+        super(data_patches_div2k_unknown_x4_valid, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)        
+
+class data_patches_div2k_bicubic_x2_valid(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/div2k/DIV2K_valid_LR_bicubic/X2',
+                 target_path = './data/div2k/DIV2K_valid_LR_bicubic/X2',
+                 ref_path = './data/div2k/DIV2K_valid_HR',
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+        super(data_patches_div2k_bicubic_x2_valid, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+        
+class data_patches_div2k_bicubic_x3_valid(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/div2k/DIV2K_valid_LR_bicubic/X3',
+                 target_path = './data/div2k/DIV2K_valid_LR_bicubic/X3',
+                 ref_path = './data/div2k/DIV2K_valid_HR',
+                 patch_size=(256,256), ref_scale=3, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+        super(data_patches_div2k_bicubic_x3_valid, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)
+        
+class data_patches_div2k_bicubic_x4_valid(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = './data/div2k/DIV2K_valid_LR_bicubic/X4',
+                 target_path = './data/div2k/DIV2K_valid_LR_bicubic/X4',
+                 ref_path = './data/div2k/DIV2K_valid_HR',
+                 patch_size=(256,256), ref_scale=4, normalize=False, source_mask=False, target_mask=False, ref_mask=False, limit=None):
+        super(data_patches_div2k_bicubic_x4_valid, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit)        
