@@ -16,11 +16,19 @@ $s$ - scale factor
 
 
 
-$\mathcal {L} = \alpha L_2 (I_{LR}, I'_{LR}) + \beta SSIM (I_L, I'_L) + \gamma TV(I_H)$ , где  
+$\mathcal {L} = \alpha L_2 (I_{L}, I'_{L}) + \beta SSIM (I_L, I'_L) + \gamma TV(I'_H)$ , где  
 
 $\alpha$ =, $\beta$ =, $\gamma$ =  
-$I'_{LR}= \downarrow _s [I'_{HR} \otimes k]$,  
-$s$ - scale factor  
+$I'_L = \downarrow _s [I'_H \otimes k]$,  
+$s$ - scale factor,  
+$k$ - ядро размытия.
 
 
+## Эксперименты и обучение 
 
+Коэффициенты компонентов лосс функции, а также гиперпараметры сети подбирались экспериментально. Подробно с результатами можно ознакомится в   . Итоговый вариант сети представляет собой архитектуру, представленную на рисунке ниже:
+
+![loss schema](img/cnn_schema.png) 
+
+Для обучение сети использовался датасет [RealSRv3](https://www.kaggle.com/datasets/yashchoudhary/realsr-v3) из статьи [Toward real-world single image super-resolution: A new benchmark and a new model![image](https://github.com/basil-77/itmo_ps_blind_superresolution/assets/115183992/97569bcd-bfe2-478a-8efa-28c6a8307560)
+](https://arxiv.org/abs/1904.00523). Особенностью его является тот факт, что в отличие от большинства датасетов, используемых в задачах SR, изображение LR в нем сформированы не синтетически, путем даусемпла из HR версий, а при помощи съемки с разными фокусными расстояниями и дальнейшим выравниванием полученных снимков таким образом, чтобы границы каждого изображения в наборах «HR-LRx2, HR-LRx3, HR-LRx4» были идентичными.
