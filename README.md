@@ -16,7 +16,7 @@ $s$ - scale factor
 ![loss schema](img/loss_schema.png)  
 
 
-$\mathcal {L} = \alpha L_2 (I_{L}, I'_{L}) + \beta SSIM (I_L, I'_L) + \gamma TV(I'_H)$ , где  
+$\mathcal {L} = \alpha L_2 (I_{L}, I'_{L}) + \beta SSIM (I_L, I'_L) $ [//]:   + \gamma TV(I'_H)$ , где  
 
 $\alpha$ =, $\beta$ =, $\gamma$ =  
 $I'_L = \downarrow _s [I'_H \otimes k]$,  
