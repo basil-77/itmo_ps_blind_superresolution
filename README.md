@@ -16,11 +16,11 @@ $s$ - scale factor
 
 
 
-$\mathcal {L} = \alpha $ $ L_2(I_{LR},I'_{LR}) + \beta SSIM(I_{LR},I'_{LR}) + \gamma TV(I'_{HR}),
+$\mathcal {L} = \alpha L_2 (I_{LR}, I'_{LR}) + \beta SSIM (I_L, I'_L) + \gamma TV(I_H)$ , где  
 
 $\alpha$ =, $\beta$ =, $\gamma$ =  
 $I'_{LR}= \downarrow _s [I'_{HR} \otimes k]$,  
 $s$ - scale factor  
 
 
-$\mathcal {L} = \alpha L_2 (I_{LR}, I'_{LR}) + \beta SSIM (I_{LR},)$
+
