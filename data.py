@@ -46,7 +46,7 @@ class image_dataset_from_file(Dataset):
 
         for filename in os.listdir(self.ref_path):
             if self.ref_mask:
-                if filename.find(self.target_mask)>0:
+                if filename.find(self.ref_mask)>0:
                     self.images_ref.append(os.path.join(self.ref_path, filename))
             else:
                 self.images_ref.append(os.path.join(self.ref_path, filename))
@@ -211,6 +211,104 @@ class image_dataset_patches_from_file(Dataset):
         data_target = self.images_target_patches[index]
         return data_source, data_target
 
+
+class data_images_lrsonshrfather(image_dataset_from_file):
+    def __init__(self,
+                                 lr_path,
+                                 hr_path,
+                                 lr_mask=None,
+                                 hr_mask=None,
+                                 scale=2,
+                                 scales=[2,3,4],
+                                 ):
+        super(data_images_lrsonshrfather, self).__init__(source_path=lr_path, ref_path=hr_path, size=None, ref_scale=scale, source_mask=lr_mask, ref_mask=hr_mask) 
+        self.lr_path = lr_path
+        self.hr_path = hr_path
+        self.scale = scale
+        self.scales = scales
+        self.images_lr_sons = []
+        self.images_hr_fathers = []
+        
+        scale_son = self.scale
+
+        for image in tqdm(self.images_source_img):
+            for scale in self.scales:    
+                resizes = {
+                    'bilinear': torchvision.transforms.Resize((int(image.shape[1]/scale), int(image.shape[2]/scale)),
+                                                             interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
+                                                             antialias=True),
+                    'nearest': torchvision.transforms.Resize((int(image.shape[1]/scale), int(image.shape[2]/scale)),
+                                                             interpolation=torchvision.transforms.InterpolationMode.NEAREST,
+                                                             antialias=True),
+                    'nearest_exact': torchvision.transforms.Resize((int(image.shape[1]/scale), int(image.shape[2]/scale)),
+                                                             interpolation=torchvision.transforms.InterpolationMode.NEAREST_EXACT,
+                                                             antialias=True),
+                    'bicubic': torchvision.transforms.Resize((int(image.shape[1]/scale), int(image.shape[2]/scale)),
+                                                             interpolation=torchvision.transforms.InterpolationMode.BICUBIC,
+                                                             antialias=True),  
+                }
+                resize_as = random.choice(list(resizes.values()))
+                image_downscale = resize_as(image)
+                if image_downscale.shape[1] % 2 != 0 or image_downscale.shape[2] %2 != 0:
+                    new_h = image_downscale.shape[1] - 1 if image_downscale.shape[1] % 2 != 0 else image_downscale.shape[1]
+                    new_w = image_downscale.shape[2] - 1 if image_downscale.shape[2] % 2 != 0 else image_downscale.shape[2]
+                    crop = torchvision.transforms.CenterCrop((new_h, new_w))
+                    image_downscale = crop(image_downscale)
+                    
+                augmenters = {
+                    #'Rotate90': torchvision.transforms.RandomRotation(degrees=(90,90), expand=True),
+                    #'Rotate180': torchvision.transforms.RandomRotation(degrees=(180,180), expand=True),
+                    #'Rotate270': torchvision.transforms.RandomRotation(degrees=(270,270), expand=True),
+                    'HFlip': torchvision.transforms.RandomHorizontalFlip(p=1),
+                    'VFlip': torchvision.transforms.RandomVerticalFlip(p=1),
+                }
+                for (augmenter_name, augmenter) in augmenters.items():
+                    resizes_son = {
+                        'bilinear': torchvision.transforms.Resize((int(image_downscale.shape[1]/scale_son),
+                                                                   int(image_downscale.shape[2]/scale_son)),
+                                                                 interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
+                                                                 antialias=True),
+                        'nearest': torchvision.transforms.Resize((int(image_downscale.shape[1]/scale_son),
+                                                                  int(image_downscale.shape[2]/scale_son)),
+                                                                 interpolation=torchvision.transforms.InterpolationMode.NEAREST,
+                                                                 antialias=True),
+                        'nearest_exact': torchvision.transforms.Resize((int(image_downscale.shape[1]/scale_son),
+                                                                        int(image_downscale.shape[2]/scale_son)),
+                                                                 interpolation=torchvision.transforms.InterpolationMode.NEAREST_EXACT,
+                                                                 antialias=True),
+                        'bicubic': torchvision.transforms.Resize((int(image_downscale.shape[1]/scale_son),
+                                                                  int(image_downscale.shape[2]/scale_son)),
+                                                                 interpolation=torchvision.transforms.InterpolationMode.BICUBIC,
+                                                                 antialias=True),  
+                    }
+                    resize_as = random.choice(list(resizes_son.values()))
+                    image_downscale_son = resize_as(image_downscale)
+                    img_aug_father = augmenter(image_downscale)
+                    img_aug_son = augmenter(image_downscale_son)
+                    self.images_hr_fathers.append(img_aug_father)
+                    self.images_lr_sons.append(img_aug_son)
+
+    def __len__(self):
+        return len(self.images_hr_fathers)
+    
+    def __getitem__(self, index):
+        data_source = self.images_lr_sons[index]
+        data_target = self.images_hr_fathers[index]
+        return data_source, data_target                    
+        
+
+class data_images_lrsonshrfather_realsr_x2(data_images_lrsonshrfather):
+    def __init__(self,
+                 lr_path = './data/RealSR(V3)/canon/train/2',
+                 hr_path = './data/RealSR(V3)/canon/train/2',
+                 lr_mask = 'LR',
+                 hr_mask = 'HR',
+                 scale=2,
+                 scales = [2,3,4]
+                 ):
+        super(data_images_lrsonshrfather_realsr_x2, self).__init__(lr_path=lr_path, hr_path=hr_path, lr_mask=lr_mask, hr_mask=hr_mask, scale=scale, scales=scales)
+
+
 class data_patches_custom_canoneosr_x2_train(image_dataset_patches_from_file):
     def __init__(self,
                  source_path = './data/canoneosr/lr_x2',
@@ -227,6 +325,22 @@ class data_patches_realsr_x2_train(image_dataset_patches_from_file):
                  ref_path = ['./data/RealSR(V3)/canon/train/2', './data/RealSR(V3)/Nikon/train/2'],
                  patch_size=(256,256), ref_scale=2, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None, refastarget=False):
         super(data_patches_realsr_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, normalize=normalize, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
+
+class data_patches_realsr_canon_x2_train(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = ['./data/RealSR(V3)/canon/train/2'],
+                 target_path = ['./data/RealSR(V3)/canon/train/2'],
+                 ref_path = ['./data/RealSR(V3)/canon/train/2'],
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None, refastarget=False):
+        super(data_patches_realsr_canon_x2_train, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, normalize=normalize, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
+
+class data_patches_realsr_canon_x2_test(image_dataset_patches_from_file):
+    def __init__(self,
+                 source_path = ['./data/RealSR(V3)/canon/test/2'],
+                 target_path = ['./data/RealSR(V3)/canon/test/2'],
+                 ref_path = ['./data/RealSR(V3)/canon/test/2'],
+                 patch_size=(256,256), ref_scale=2, normalize=False, source_mask='LR', target_mask='LR', ref_mask='HR', limit=None, refastarget=False):
+        super(data_patches_realsr_canon_x2_test, self).__init__(source_path, target_path, ref_path, patch_size=patch_size, ref_scale=ref_scale, normalize=normalize, source_mask=source_mask, target_mask=target_mask, ref_mask=ref_mask, limit=limit, refastarget=refastarget)
 
 class data_patches_realsr_x3_train(image_dataset_patches_from_file):
     def __init__(self,

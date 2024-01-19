@@ -27,8 +27,9 @@ def _compute_padding(kernel_size: list[int]) -> list[int]:
 
 def hr2lr(img, kernel, noise=None, factor=2.0):
     
-    noise_mean, noise_std = noise
+    
     if noise:
+        noise_mean, noise_std = noise
         img_noised = img + torch.normal(noise_mean, noise_std, size=img.shape).to(img.device)
     else:
         img_noised = img
